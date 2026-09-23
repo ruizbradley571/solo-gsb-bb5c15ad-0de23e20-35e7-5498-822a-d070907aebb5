@@ -43,17 +43,28 @@ def md_fenced(text: str) -> str:
     """把任意原文包进代码围栏并原样返回，长度按内容动态加长。
 
     围栏反引号数量始终比正文中出现过的最长反引号串多一个，因此正文里
-    的 ``` / ```` 等都不可能提前闭合围栏；围栏闭合行必须独占一行，
-    故在内容前补一个换行（内容本身以换行开头时除外）。内容逐字符保留，
-    不做转义或截断——空字符串得到一个空代码块。
+    的 ``` / ```` 等（即便出现在行首）都不可能提前闭合围栏。围栏的开、
+    闭行都独占一行：开围栏后固定补一个结构换行，故原文自带的前导换行
+    （前导空行）逐字符保留；原文末尾再补一个换行后才是闭围栏，保证闭
+    围栏始终位于独立行。内容不做转义或截断——空字符串得到一个空代码
+    块。
+
+    最长反引号串只对原文做一次线性扫描即可得到，围栏长度与渲染耗时均
+    随原文长度线性增长，不会因长连续反引号反复扫描全文。
     """
     source = str(text)
-    n = 3
-    while "`" * n in source:
-        n += 1
-    fence = "`" * n
-    prefix = "" if source == "" or source.startswith("\n") else "\n"
-    return f"{fence}{prefix}{source}\n{fence}"
+    longest = 0
+    run = 0
+    for ch in source:
+        if ch == "`":
+            run += 1
+            if run > longest:
+                longest = run
+        else:
+            run = 0
+    # 围栏至少 3 个反引号（代码围栏的最小长度）；含更长反引号串时再加长
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}\n{source}\n{fence}"
 
 
 def fmt_stamp(stamp) -> str:
