@@ -42,18 +42,25 @@ def md_inline(value) -> str:
 def md_fenced(text: str) -> str:
     """把任意原文包进代码围栏并原样返回，长度按内容动态加长。
 
-    围栏反引号数量始终比正文中出现过的最长反引号串多一个，因此正文里
-    的 ``` / ```` 等都不可能提前闭合围栏；围栏闭合行必须独占一行，
-    故在内容前补一个换行（内容本身以换行开头时除外）。内容逐字符保留，
-    不做转义或截断——空字符串得到一个空代码块。
+    一次遍历原文找出最长的连续反引号串，围栏反引号数量取其加一（至少
+    三个），因此正文里任意长的 ``` / ```` 等都不可能提前闭合围栏，且
+    计算耗时随原文长度线性增长。围栏与原文之间始终用一个独立的结构
+    换行隔开：原文自身的前导换行（含连续空行）全部作为内容保留，不会
+    被当作结构分隔符吞掉。内容逐字符保留，不做转义或截断——空字符串
+    得到一个空代码块。
     """
     source = str(text)
-    n = 3
-    while "`" * n in source:
-        n += 1
-    fence = "`" * n
-    prefix = "" if source == "" or source.startswith("\n") else "\n"
-    return f"{fence}{prefix}{source}\n{fence}"
+    longest = 0
+    run = 0
+    for ch in source:
+        if ch == "`":
+            run += 1
+            if run > longest:
+                longest = run
+        else:
+            run = 0
+    fence = "`" * max(3, longest + 1)
+    return f"{fence}\n{source}\n{fence}"
 
 
 def fmt_stamp(stamp) -> str:
